@@ -1,5 +1,7 @@
 
 
+ZOOKEEPER_SERVICE = "localhost:2181"
+
 
 
 BYTES_PER_MESSAGE = 8192
