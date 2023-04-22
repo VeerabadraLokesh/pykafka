@@ -4,8 +4,52 @@
 import os
 import json
 from glob import glob
+import threading
+import time
+import logging
+import shutil
 
 import settings as S
+
+
+class ThreadSafeDict:
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._state: dict = {}
+
+    def __iter__(self):
+        return self._state.__iter__()
+
+    def __setitem__(self, key, value):
+        with self._lock:
+            self._state[key] = value
+
+    def __getitem__(self, key):
+        with self._lock:
+            return self._state[key]
+
+    def __contains__(self, key):
+        return (key in self._state)
+
+    def __str__(self) -> str:
+        return self._state.__str__()
+
+    def get(self, key, default=None):
+        with self._lock:
+            return self._state.get(key, default)
+    
+    def get_dict(self):
+        with self._lock:
+            return self._state.copy()
+    
+    def values(self):
+        with self._lock:
+            return self._state.values()
+    
+    def keys(self):
+        with self._lock:
+            return self._state.keys()
+
 
 class FileManager:
     def __init__(self, root) -> None:
@@ -14,6 +58,61 @@ class FileManager:
         os.makedirs(self.fast_root, exist_ok=True)
         # for i in S.SERVER_IDS:
         #     os.makedirs(os.path.join(self.fast_root, str(i)), exist_ok=True)
+        self.offsets = ThreadSafeDict()
+        self.message_index = ThreadSafeDict()
+        self.segment_files = ThreadSafeDict()
+        self.topic_locks = ThreadSafeDict()
+        self.create_topic_lock = threading.Lock()
+        self.delete_thread = threading.Thread(target=self.delete_old_files_thread, daemon=True)
+
+        
+    def delete_old_files_thread(self):
+        while True:
+            time.sleep(S.DELETE_FILES_INTERVAL)
+            try:
+                current_time = time.time()
+
+                for root, dirs, files in os.walk(".", topdown=True):
+                    for name in files:
+                        fpath = os.path.join(root, name)
+                        fmodified = os.path.getmtime(fpath)
+                        if current_time - fmodified > S.TOPIC_RETENTION_SLA:
+                            try:
+                                os.remove(fpath)
+                                logging.info(f"DELETED FILE {fmodified} {fpath}")
+                            except:
+                                pass
+                    for name in dirs:
+                        fpath = os.path.join(root, name)
+                        fmodified = os.path.getmtime(fpath)
+                        if current_time - fmodified > S.TOPIC_RETENTION_SLA:
+                            try:
+                                shutil.rmtree(fpath)
+                                logging.info(f"DELETED DIR {fmodified} {fpath}")
+                            except:
+                                pass
+            except:
+                pass
+    
+
+    def get_topic_lock(self, topic):
+        if self.topic_locks.get(topic) is None:
+            with self.create_topic_lock:
+                if self.topic_locks.get(topic) is None:
+                    self.topic_locks[topic] = threading.Lock()
+        return self.topic_locks.get(topic)
+
+
+    def write_to_topic(self, topic, bytes):
+        try:
+            with self.get_topic_lock(topic):
+                path = os.path.join(self.fast_root, topic)
+                file_desc = os.open(path, os.O_RDWR | os.O_CREAT)
+                os.pwrite(file_desc, bytes, self.offsets.get(topic, 0))     
+                os.close(file_desc)
+                self.offsets[topic] += len(bytes)
+        except Exception as e:
+            print(f'Error in writing to topic {topic}: {e}')
 
     
     def write(self, file, message):
