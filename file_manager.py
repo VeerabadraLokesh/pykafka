@@ -54,7 +54,7 @@ class ThreadSafeDict:
 class FileManager:
     def __init__(self, root) -> None:
         self.root = root
-        self.fast_root = os.path.join(root, "cache")
+        self.fast_root = os.path.join(root, "topics")
         os.makedirs(self.fast_root, exist_ok=True)
         # for i in S.SERVER_IDS:
         #     os.makedirs(os.path.join(self.fast_root, str(i)), exist_ok=True)
@@ -73,7 +73,7 @@ class FileManager:
             try:
                 current_time = time.time()
 
-                for root, dirs, files in os.walk(".", topdown=True):
+                for root, dirs, files in os.walk(self.root, topdown=True):
                     for name in files:
                         fpath = os.path.join(root, name)
                         fmodified = os.path.getmtime(fpath)
