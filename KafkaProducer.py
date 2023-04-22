@@ -4,9 +4,9 @@
 
 
 
-class Producer:
+class KafkaProducer:
 
-    def __init__(self) -> None:
+    def __init__(self, bootstrap_servers) -> None:
         pass
 
 

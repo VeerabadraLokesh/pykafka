@@ -64,6 +64,7 @@ class FileManager:
         self.topic_locks = ThreadSafeDict()
         self.create_topic_lock = threading.Lock()
         self.delete_thread = threading.Thread(target=self.delete_old_files_thread, daemon=True)
+        self.delete_thread.start()
 
         
     def delete_old_files_thread(self):

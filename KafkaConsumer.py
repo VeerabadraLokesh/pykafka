@@ -1,7 +1,7 @@
 
 
 
-class Consumer:
+class KafkaConsumer:
 
     def __init__(self) -> None:
         self.events = {}
