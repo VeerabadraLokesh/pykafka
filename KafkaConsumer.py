@@ -6,6 +6,7 @@ from queue import Queue
 from kazoo.client import KazooClient
 
 import settings as S
+import constants as C
 
 class KafkaConsumer:
 
@@ -15,8 +16,10 @@ class KafkaConsumer:
         self.socket = None
         self.topic = topic
         self.bootstrap_servers = bootstrap_servers
+        self.offsets_queue = Queue()
         # self.topic = topic
         # self.message_queue = Queue()
+
         threading.Thread(target=self.connect_to_zookeeper, daemon=True).start()
         pass
 
@@ -27,25 +30,43 @@ class KafkaConsumer:
 
             @self.zk.DataWatch(path=f'/topics/{self.topic}')
             def my_func(data, stat, event):
-                print("Data is %s" % data)
-                print("Version is %s" % stat.version)
-                print(event)
+                # print("Data is %s" % data)
+                # print("Version is %s" % stat.version)
+                # print(event)
+                self.offsets_queue.put(data)
+                self.event_listener.set()
         except Exception as e:
             logging.error(e)
 
 
 
     def createMessageStreams(self):
+        READ_COMMAND = f'r{self.topic}'.encode()
+        self.socket = None
         while True:
-            # messages = {}
-            # for message in messages:
-            #     bytes = message.payload
-            #     yield bytes
-            # self.events[topic].wait()
-            # self.events[topic].clear()
+            try:
+                if self.socket is None:
+                    HOST, PORT = self.bootstrap_servers.split(':')
+                    PORT = int(PORT)
+                    self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    self.socket.connect((HOST, PORT))
+                
+                while self.offsets_queue.qsize():
+                    offset = self.offsets_queue.queue[0]
+                    message =  READ_COMMAND + offset
+                    self.socket.sendall(message)
+
+                    r = self.socket.recv(S.BYTES_PER_MESSAGE)
+                    yield r
+                    self.offsets_queue.get(0)
+            except socket.error:
+                self.socket.close()
+                self.socket = None
+            except Exception as e:
+                logging.error(e)
             self.event_listener.wait()
             self.event_listener.clear()
-        pass
+
 
 
 if __name__ == "__main__":
@@ -54,4 +75,5 @@ if __name__ == "__main__":
 
     kafka_consumer = KafkaConsumer(bootstrap_servers=S.BOOTSTRAP_SERVERS, topic=topic)
 
-    kafka_consumer.createMessageStreams()
+    for message in kafka_consumer.createMessageStreams():
+        print(message.decode())

@@ -106,24 +106,38 @@ class FileManager:
     
     def send_file(self, conn: socket.socket, topic, offset):
         path = os.path.join(self.topic_root, topic)
+        if topic not in self.offsets:
+            conn.sendall(b'')
+        msg_end = self.offsets.get(topic).get(offset, None)
+        if msg_end is None:
+            count = None
+        else:
+            count = msg_end - offset
         with open(path, 'rb') as rf:
-            sent_count = conn.sendfile(rf, offset=offset, count=1)
+            sent_count = conn.sendfile(rf, offset=offset, count=count)
+            # logging.info(f'sent {sent_count} bytes')
 
 
     def write_to_topic(self, topic, bytes):
         try:
             with self.get_topic_lock(topic):
+                if topic not in self.offsets:
+                    self.offsets[topic] = ThreadSafeDict()
+                    self.offsets[topic]['offset'] = 0
+                topic_offsets = self.offsets[topic]
+                previous_offset = topic_offsets['offset']
+
                 path = os.path.join(self.topic_root, topic)
                 file_desc = os.open(path, os.O_RDWR | os.O_CREAT)
-                os.pwrite(file_desc, bytes, self.offsets.get(topic, 0))     
+                os.pwrite(file_desc, bytes, previous_offset)     
                 os.close(file_desc)
-                if topic not in self.offsets:
-                    self.offsets[topic] = 0
-                previous_offset = self.offsets[topic]
-                self.offsets[topic] += len(bytes)
+
+                topic_offsets[previous_offset] = previous_offset + len(bytes)
+                topic_offsets['offset'] = previous_offset + len(bytes)
                 return previous_offset
         except Exception as e:
             print(f'Error in writing to topic {topic}: {e}')
+            raise e
 
     
     # def write(self, file, message):

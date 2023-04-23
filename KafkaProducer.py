@@ -47,6 +47,8 @@ class KafkaProducer:
             self.new_message_event.clear()
     
     def send(self, topic, message):
+        if len(message) < 1:
+            return
         message_ = bytes(f'w{topic}', 'utf-8') + message
         self.message_queue.put(message_)
         self.new_message_event.set()

@@ -49,12 +49,12 @@ class KafkaBroker:
                 topic = data[1:6].decode()
                 payload = data[6:]
                 if command == 119 or command == 'w':
-                    print(command, topic, len(payload))
+                    # print(command, topic, len(payload))
                     self.write_to_topic(topic, payload)
                     conn.sendall(C.SUCCESS)
                 elif command == 114 or command == 'r':
                     offset = int(payload.decode())
-                    print(command, topic, offset)
+                    # print(command, topic, offset)
                     file_manager.send_file(conn, topic, offset)
                     
             except:
@@ -98,7 +98,8 @@ class KafkaBroker:
                     offset = self.file_manager.write_to_topic(topic, payload)
                     self.update_zookeeper(topic, offset)
                     self.messages_queue.get(0)
-                except:
+                except Exception as e:
+                    raise e
                     pass
             # for topic in self.messages:
             #     topic_messages_queue = self.messages[topic]
