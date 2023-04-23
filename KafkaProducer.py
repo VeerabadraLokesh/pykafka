@@ -43,8 +43,9 @@ class KafkaProducer:
                 self.socket = None
             except Exception as e:
                 logging.error(e)
-            self.new_message_event.wait()
-            self.new_message_event.clear()
+            self.new_message_event.wait(timeout=S.FLUSH_MESSAGE_TIMEOUT)
+            if self.new_message_event.is_set():
+                self.new_message_event.clear()
     
     def send(self, topic, message):
         if len(message) < 1:

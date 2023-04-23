@@ -57,7 +57,7 @@ class KafkaBroker:
                     # print(command, topic, offset)
                     ## Send data efficiently using sendfile api
                     file_manager.send_file(conn, topic, offset)
-                    
+                    # print('sent successfully')
             except:
                 conn.sendall(C.FAILED)
     

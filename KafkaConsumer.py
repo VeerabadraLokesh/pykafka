@@ -55,6 +55,7 @@ class KafkaConsumer:
                     offset = self.offsets_queue.queue[0]
                     if offset:
                         message =  READ_COMMAND + offset
+                        # print(message)
                         self.socket.sendall(message)
 
                         r = self.socket.recv(S.BYTES_PER_MESSAGE)
@@ -83,5 +84,5 @@ if __name__ == "__main__":
     kafka_consumer = KafkaConsumer(bootstrap_servers=S.BOOTSTRAP_SERVERS, topic=topic)
 
     for message in kafka_consumer.createMessageStreams():
-        if len(message) > 0:
+        if len(message) > 0 and message != b' ':
             print(message.decode())

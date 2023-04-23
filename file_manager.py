@@ -61,6 +61,9 @@ class FileManager:
     def __init__(self, root) -> None:
         self.root = root
         self.topic_root = os.path.join(root, "topics")
+        ## deleting old messages
+        if os.path.isdir(self.topic_root):
+            shutil.rmtree(self.topic_root)
         os.makedirs(self.topic_root, exist_ok=True)
         # for i in S.SERVER_IDS:
         #     os.makedirs(os.path.join(self.topic_root, str(i)), exist_ok=True)
@@ -140,16 +143,19 @@ class FileManager:
         return self.topic_locks.get(topic)
     
     def send_file(self, conn: socket.socket, topic, offset):
-        offsets = self.segment_files[topic]['offsets']
+        offsets = self.segment_files.get(topic, {}).get('offsets', [])
         topic_file = None
         for ofset in offsets:
-            if offset > ofset:
+            if offset >= ofset:
                 topic_file = self.segment_files[topic][ofset]
                 break
+        # print(offsets, offset)
         if topic_file:
             path = os.path.join(self.topic_root, topic_file)
             if topic not in self.offsets:
-                conn.sendall(b'')
+                # logging.info('sening')
+                conn.sendall(b' ')
+                return
             msg_end = self.offsets.get(topic).get(offset, None)
             if msg_end is None:
                 count = None
@@ -159,8 +165,10 @@ class FileManager:
                 ## socket.sendfile API
                 sent_count = conn.sendfile(rf, offset=offset, count=count)
                 # logging.info(f'sent {sent_count} bytes')
+                return
         else:
-            conn.sendall(f"")
+            # logging.info('sening')
+            conn.sendall(b' ')
 
 
     def write_to_topic(self, topic, bytes):
