@@ -21,7 +21,7 @@ class KafkaConsumer:
         # self.message_queue = Queue()
         self.offset = 0
         self.dropped_message_count = 0
-        self.enable_error_logs = S.ENABLE_DEBUGGING
+        self.enable_error_logs = S.ENABLE_DEBUGGING_ZOOKEEPER
 
         threading.Thread(target=self.connect_to_zookeeper, daemon=True).start()
         pass

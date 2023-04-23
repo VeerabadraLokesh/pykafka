@@ -32,7 +32,7 @@ FLUSH_MESSAGE_TIMEOUT = 1
 # BYTES_PER_MESSAGE = 8 * 1024 * 1024
 
 ## Max bytes per message
-BYTES_PER_MESSAGE = 65476
+BYTES_PER_MESSAGE = 65476   ## 6 bytes for command and topic name; so 65470 max bytes per message
 
 BROKER_CONNECTIONS = 1000
 
@@ -46,4 +46,6 @@ TEST_MESSAGE_SIZE = 32768       ## 32 KiB
 USE_ZOOKEPER_FOR_PULLING = False
 
 ### Set it to True to log errors about gaps in zookeeper updates (Only for test_consumer.py)
-ENABLE_DEBUGGING = False
+ENABLE_MSG_STATS = True
+
+ENABLE_DEBUGGING_ZOOKEEPER = False

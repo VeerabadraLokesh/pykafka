@@ -101,8 +101,9 @@ class KafkaBroker:
             with self.flush_message_lock:
                 self.flush_message_counter = 0
             
-            # count = 0
-            # start_time = time.perf_counter()
+            if S.ENABLE_MSG_STATS:
+                count = 0
+                start_time = time.perf_counter()
             
             while self.messages_queue.qsize():
                 try:
@@ -110,14 +111,16 @@ class KafkaBroker:
                     offset = self.file_manager.write_to_topic(topic, payload)
                     self.update_zookeeper(topic, offset)
                     self.messages_queue.get(0)
-                    # count += 1
+                    if S.ENABLE_MSG_STATS:
+                        count += 1
                 except Exception as e:
                     raise e
-            # end_time = time.perf_counter()
-            # time_diff = end_time - start_time
-            # time_per_msg = count/time_diff
-            # if count > 0:
-            #     logging.info(f"saved {count} messags in {time_diff}: {time_per_msg} msgs rate")
+            if S.ENABLE_MSG_STATS:
+                end_time = time.perf_counter()
+                time_diff = end_time - start_time
+                time_per_msg = count/time_diff
+                if count > 0:
+                    logging.info(f"saved {count} messags in {time_diff:.3f}. rate: {time_per_msg:.3f} msgs/sec ")
 
             # for topic in self.messages:
             #     topic_messages_queue = self.messages[topic]

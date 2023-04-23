@@ -40,5 +40,5 @@ if __name__ == "__main__":
     tmb = total_bytes/1024/1024
     mibps = tmb / time_taken
 
-    logging.info(f"Received {S.TEST_MESSAGE_COUNT} in {time_taken} seconds")
+    logging.info(f"Received {S.TEST_MESSAGE_COUNT} in {time_taken:.3f} seconds")
     logging.info(f"{tmb} MiB received in {time_taken:.3f} seconds. Rate: {mibps:.3f} MiB/s")
