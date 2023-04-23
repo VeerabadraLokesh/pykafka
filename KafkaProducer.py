@@ -20,9 +20,14 @@ class KafkaProducer:
         threading.Thread(target=self.send_messages, daemon=True).start()
         pass
 
+    ## Wait till all messages are sent
     def wait(self):
+        previous_count = self.message_queue.qsize()
         while self.message_queue.qsize():
-            logging.info(f"{self.message_queue.qsize()} messages remaining")
+            current_count = self.message_queue.qsize()
+            if current_count - previous_count > 1000:
+                logging.info(f"{self.message_queue.qsize()} messages remaining")
+                previous_count = current_count
             sleep(0.1)
 
     def send_messages(self):
@@ -98,4 +103,4 @@ if __name__ == "__main__":
             break
         m = bytes(i, 'utf-8')
         kafka_producer.send(topic, m)
-        kafka_producer.wait()
+    # kafka_producer.wait()
