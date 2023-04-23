@@ -90,6 +90,10 @@ class FileManager:
                             new_topic_file = f'{topic}_{current_offset}'
                             self.segment_files[topic]['active'] = new_topic_file
                             self.segment_files[topic][current_offset] = new_topic_file
+                            offsets = list(self.segment_files[topic].keys())
+                            offsets.remove('active')
+                            offsets.sort(reverse=True)
+                            self.segment_files[topic]['offsets'] = offsets
 
                 for root, dirs, files in os.walk(self.root, topdown=True):
                     for name in files:
@@ -102,6 +106,10 @@ class FileManager:
                                     with self.get_topic_lock(topic):
                                         topic_offset = int(topic_offset)
                                         del self.segment_files[topic][topic_offset]
+                                        offsets = list(self.segment_files[topic].keys())
+                                        offsets.remove('active')
+                                        offsets.sort(reverse=True)
+                                        self.segment_files[topic]['offsets'] = offsets
                                         for ofset in self.offsets[topic].keys():
                                             if ofset < topic_offset:
                                                 del self.offsets[topic][ofset]
@@ -132,9 +140,7 @@ class FileManager:
         return self.topic_locks.get(topic)
     
     def send_file(self, conn: socket.socket, topic, offset):
-        offsets = list(self.segment_files[topic].keys())
-        offsets.remove('active')
-        offsets.sort(reverse=True)
+        offsets = self.segment_files[topic]['offsets']
         topic_file = None
         for ofset in offsets:
             if offset > ofset:
@@ -169,6 +175,7 @@ class FileManager:
                 if topic not in self.segment_files:
                     self.segment_files[topic] = ThreadSafeDict()
                     self.segment_files[topic][0] = f"{topic}_0"
+                    self.segment_files[topic]['offsets'] = [0]
                     self.segment_files[topic]['active'] = f"{topic}_0"
                 path = os.path.join(self.topic_root, self.segment_files[topic]['active'])
                 file_desc = os.open(path, os.O_RDWR | os.O_CREAT)
