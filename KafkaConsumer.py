@@ -53,17 +53,19 @@ class KafkaConsumer:
                 
                 while self.offsets_queue.qsize():
                     offset = self.offsets_queue.queue[0]
-                    message =  READ_COMMAND + offset
-                    self.socket.sendall(message)
+                    if offset:
+                        message =  READ_COMMAND + offset
+                        self.socket.sendall(message)
 
-                    r = self.socket.recv(S.BYTES_PER_MESSAGE)
-                    yield r
+                        r = self.socket.recv(S.BYTES_PER_MESSAGE)
+                        yield r
                     self.offsets_queue.get(0)
             except socket.error:
                 self.socket.close()
                 self.socket = None
             except Exception as e:
                 logging.error(e)
+                # raise e
             self.event_listener.wait()
             self.event_listener.clear()
 
@@ -71,9 +73,15 @@ class KafkaConsumer:
 
 if __name__ == "__main__":
 
+
+    logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+                        datefmt='%d-%m-%Y:%H:%M:%S',
+                        level=logging.INFO)
+
     topic = 'TOPIC'
 
     kafka_consumer = KafkaConsumer(bootstrap_servers=S.BOOTSTRAP_SERVERS, topic=topic)
 
     for message in kafka_consumer.createMessageStreams():
-        print(message.decode())
+        if len(message) > 0:
+            print(message.decode())

@@ -20,6 +20,11 @@ class ThreadSafeDict:
 
     def __iter__(self):
         return self._state.__iter__()
+    
+    def __delitem__(self, key):
+        with self._lock:
+            if key in self._state:
+                del self._state[key]
 
     def __setitem__(self, key, value):
         with self._lock:
@@ -60,7 +65,7 @@ class FileManager:
         # for i in S.SERVER_IDS:
         #     os.makedirs(os.path.join(self.topic_root, str(i)), exist_ok=True)
         self.offsets = ThreadSafeDict()
-        self.message_index = ThreadSafeDict()
+        # self.message_index = ThreadSafeDict()
         self.segment_files = ThreadSafeDict()
         self.topic_locks = ThreadSafeDict()
         self.create_topic_lock = threading.Lock()
@@ -74,14 +79,36 @@ class FileManager:
             try:
                 current_time = time.time()
 
+                for topic in self.segment_files:
+                    with self.get_topic_lock(topic):
+                        active_topic_file = self.segment_files[topic]['active']
+                        path = os.path.join(self.topic_root, active_topic_file)
+                        active_file_size = os.path.getsize(path)
+                        if active_file_size > S.MAX_SEGMENT_FILE_SIZE:
+                            # offset = int(active_topic_file.split('_')[1])
+                            current_offset = self.offsets[topic]['offset']
+                            new_topic_file = f'{topic}_{current_offset}'
+                            self.segment_files[topic]['active'] = new_topic_file
+                            self.segment_files[topic][current_offset] = new_topic_file
+
                 for root, dirs, files in os.walk(self.root, topdown=True):
                     for name in files:
                         fpath = os.path.join(root, name)
                         fmodified = os.path.getmtime(fpath)
                         if current_time - fmodified > S.TOPIC_RETENTION_SLA:
                             try:
-                                os.remove(fpath)
-                                logging.info(f"DELETED FILE {fmodified} {fpath}")
+                                if self.segment_files[topic]['active'] != name:
+                                    topic, topic_offset = name.split('_')
+                                    with self.get_topic_lock(topic):
+                                        topic_offset = int(topic_offset)
+                                        del self.segment_files[topic][topic_offset]
+                                        for ofset in self.offsets[topic].keys():
+                                            if ofset < topic_offset:
+                                                del self.offsets[topic][ofset]
+                                    os.remove(fpath)
+                                    logging.info(f"DELETED FILE {fmodified} {fpath}")
+                                else:
+                                    logging.info(f"Not deleting active topic file: {fpath}")
                             except:
                                 pass
                     # for name in dirs:
@@ -105,17 +132,29 @@ class FileManager:
         return self.topic_locks.get(topic)
     
     def send_file(self, conn: socket.socket, topic, offset):
-        path = os.path.join(self.topic_root, topic)
-        if topic not in self.offsets:
-            conn.sendall(b'')
-        msg_end = self.offsets.get(topic).get(offset, None)
-        if msg_end is None:
-            count = None
+        offsets = list(self.segment_files[topic].keys())
+        offsets.remove('active')
+        offsets.sort(reverse=True)
+        topic_file = None
+        for ofset in offsets:
+            if offset > ofset:
+                topic_file = self.segment_files[topic][ofset]
+                break
+        if topic_file:
+            path = os.path.join(self.topic_root, topic_file)
+            if topic not in self.offsets:
+                conn.sendall(b'')
+            msg_end = self.offsets.get(topic).get(offset, None)
+            if msg_end is None:
+                count = None
+            else:
+                count = msg_end - offset
+            with open(path, 'rb') as rf:
+                ## socket.sendfile API
+                sent_count = conn.sendfile(rf, offset=offset, count=count)
+                # logging.info(f'sent {sent_count} bytes')
         else:
-            count = msg_end - offset
-        with open(path, 'rb') as rf:
-            sent_count = conn.sendfile(rf, offset=offset, count=count)
-            # logging.info(f'sent {sent_count} bytes')
+            conn.sendall(f"")
 
 
     def write_to_topic(self, topic, bytes):
@@ -127,7 +166,11 @@ class FileManager:
                 topic_offsets = self.offsets[topic]
                 previous_offset = topic_offsets['offset']
 
-                path = os.path.join(self.topic_root, topic)
+                if topic not in self.segment_files:
+                    self.segment_files[topic] = ThreadSafeDict()
+                    self.segment_files[topic][0] = f"{topic}_0"
+                    self.segment_files[topic]['active'] = f"{topic}_0"
+                path = os.path.join(self.topic_root, self.segment_files[topic]['active'])
                 file_desc = os.open(path, os.O_RDWR | os.O_CREAT)
                 os.pwrite(file_desc, bytes, previous_offset)     
                 os.close(file_desc)

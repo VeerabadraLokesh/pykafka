@@ -55,6 +55,7 @@ class KafkaBroker:
                 elif command == 114 or command == 'r':
                     offset = int(payload.decode())
                     # print(command, topic, offset)
+                    ## Send data efficiently using sendfile api
                     file_manager.send_file(conn, topic, offset)
                     
             except:
