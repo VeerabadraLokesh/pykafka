@@ -1,7 +1,10 @@
 
 import threading
 from queue import Queue
+import socket
+import logging
 
+import constants as C
 import settings as S
 
 class KafkaProducer:
@@ -9,6 +12,7 @@ class KafkaProducer:
     def __init__(self, bootstrap_servers) -> None:
         self.socket = None
         self.bootstrap_servers = bootstrap_servers
+        # self.topic = topic
         self.message_queue = Queue()
         self.new_message_event = threading.Event()
 
@@ -16,14 +20,43 @@ class KafkaProducer:
         pass
 
     def send_messages(self):
+        self.socket = None
         while True:
+            try:
+                if self.socket is None:
+                    HOST, PORT = self.bootstrap_servers.split(':')
+                    PORT = int(PORT)
+                    self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    self.socket.connect((HOST, PORT))
+                
+                while self.message_queue.qsize():
+                    message = self.message_queue.queue[0]
+                    self.socket.sendall(message)
+
+                    r = self.socket.recv(S.BYTES_PER_MESSAGE)
+                    if r == C.SUCCESS:
+                        self.message_queue.get(0)
+                    else:
+                        pass
+            except socket.error:
+                self.socket.close()
+                self.socket = None
+            except Exception as e:
+                logging.error(e)
             self.new_message_event.wait()
             self.new_message_event.clear()
     
-    def send(self, message):
-        self.message_queue.put(message)
+    def send(self, topic, message):
+        message_ = bytes(f'w{topic}', 'utf-8') + message
+        self.message_queue.put(message_)
+        self.new_message_event.set()
 
     def __del__(self):
+        try:
+            if self.socket is not None:
+                self.socket.close()
+        except:
+            pass
         pass
 
 
@@ -39,4 +72,19 @@ class MessageSet:
 
 if __name__ == "__main__":
 
+
+    logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+                        datefmt='%d-%m-%Y:%H:%M:%S',
+                        level=logging.INFO)
+
+    topic = "TOPIC"
+
     kafka_producer = KafkaProducer(bootstrap_servers=S.BOOTSTRAP_SERVERS)
+
+    while True:
+        i = input("enter message: ")
+        if i == 'q':
+            del kafka_producer
+            break
+        m = bytes(i, 'utf-8')
+        kafka_producer.send(topic, m)
