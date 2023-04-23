@@ -1,1 +1,3 @@
 kazoo
+# progressbar
+# opencv-python

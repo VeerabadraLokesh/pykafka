@@ -87,10 +87,13 @@ class FileManager:
                         active_topic_file = self.segment_files[topic]['active']
                         path = os.path.join(self.topic_root, active_topic_file)
                         active_file_size = os.path.getsize(path)
+                        # logging.info(f"{active_topic_file} size {active_file_size}, {active_file_size > S.MAX_SEGMENT_FILE_SIZE}")
                         if active_file_size > S.MAX_SEGMENT_FILE_SIZE:
                             # offset = int(active_topic_file.split('_')[1])
                             current_offset = self.offsets[topic]['offset']
+                            # logging.info(current_offset)
                             new_topic_file = f'{topic}_{current_offset}'
+                            # logging.info(new_topic_file)
                             self.segment_files[topic]['active'] = new_topic_file
                             self.segment_files[topic][current_offset] = new_topic_file
                             offsets = list(self.segment_files[topic].keys())
@@ -145,9 +148,11 @@ class FileManager:
     def send_file(self, conn: socket.socket, topic, offset):
         offsets = self.segment_files.get(topic, {}).get('offsets', [])
         topic_file = None
+        file_offset = offset
         for ofset in offsets:
             if offset >= ofset:
                 topic_file = self.segment_files[topic][ofset]
+                file_offset = offset - ofset
                 break
         # print(offsets, offset)
         if topic_file:
@@ -163,8 +168,8 @@ class FileManager:
                 count = msg_end - offset
             with open(path, 'rb') as rf:
                 ## socket.sendfile API
-                sent_count = conn.sendfile(rf, offset=offset, count=count)
-                # logging.info(f'sent {sent_count} bytes')
+                sent_count = conn.sendfile(rf, offset=file_offset, count=count)
+                # logging.info(f'sent {sent_count} bytes, {offset}, {count}')
                 return
         else:
             # logging.info('sening')
@@ -187,11 +192,13 @@ class FileManager:
                     self.segment_files[topic]['active'] = f"{topic}_0"
                 path = os.path.join(self.topic_root, self.segment_files[topic]['active'])
                 file_desc = os.open(path, os.O_RDWR | os.O_CREAT)
-                os.pwrite(file_desc, bytes, previous_offset)     
+                current_file_offset = previous_offset - self.segment_files[topic]['offsets'][0]
+                os.pwrite(file_desc, bytes, current_file_offset)     
                 os.close(file_desc)
 
                 topic_offsets[previous_offset] = previous_offset + len(bytes)
                 topic_offsets['offset'] = previous_offset + len(bytes)
+                # logging.info(previous_offset)
                 return previous_offset
         except Exception as e:
             print(f'Error in writing to topic {topic}: {e}')

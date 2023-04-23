@@ -19,6 +19,9 @@ class KafkaConsumer:
         self.offsets_queue = Queue()
         # self.topic = topic
         # self.message_queue = Queue()
+        self.offset = 0
+        self.dropped_message_count = 0
+        self.enable_error_logs = S.ENABLE_DEBUGGING
 
         threading.Thread(target=self.connect_to_zookeeper, daemon=True).start()
         pass
@@ -33,8 +36,9 @@ class KafkaConsumer:
                 # print("Data is %s" % data)
                 # print("Version is %s" % stat.version)
                 # print(event)
-                self.offsets_queue.put(data)
-                self.event_listener.set()
+                if data:
+                    self.offsets_queue.put(data)
+                    self.event_listener.set()
         except Exception as e:
             logging.error(e)
 
@@ -43,6 +47,7 @@ class KafkaConsumer:
     def createMessageStreams(self):
         READ_COMMAND = f'r{self.topic}'.encode()
         self.socket = None
+        previous_offset = -1
         while True:
             try:
                 if self.socket is None:
@@ -54,13 +59,27 @@ class KafkaConsumer:
                 while self.offsets_queue.qsize():
                     offset = self.offsets_queue.queue[0]
                     if offset:
-                        message =  READ_COMMAND + offset
+                        if self.enable_error_logs:
+                            current_offset = int(offset)/S.TEST_MESSAGE_SIZE
+                            if current_offset - previous_offset > 1:
+                                self.dropped_message_count += (current_offset - previous_offset)
+                                logging.error(f"{(current_offset - previous_offset)} message drops. current counter: {current_offset} | previous: {previous_offset}")
+                            previous_offset = current_offset
+
+                        if S.USE_ZOOKEPER_FOR_PULLING:
+                            message =  READ_COMMAND + offset
+                        else:
+                            message = READ_COMMAND + str(self.offset).encode()
+                        # print(READ_COMMAND + offset)
                         # print(message)
                         self.socket.sendall(message)
 
                         r = self.socket.recv(S.BYTES_PER_MESSAGE)
                         yield r
-                    self.offsets_queue.get(0)
+                        if self.offset >= int(offset):
+                            self.offsets_queue.get(0)
+                        if r != b' ':
+                            self.offset += len(r)
             except socket.error:
                 self.socket.close()
                 self.socket = None

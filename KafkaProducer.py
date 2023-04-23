@@ -3,6 +3,7 @@ import threading
 from queue import Queue
 import socket
 import logging
+from time import sleep
 
 import constants as C
 import settings as S
@@ -18,6 +19,11 @@ class KafkaProducer:
 
         threading.Thread(target=self.send_messages, daemon=True).start()
         pass
+
+    def wait(self):
+        while self.message_queue.qsize():
+            logging.info(f"{self.message_queue.qsize()} messages remaining")
+            sleep(0.1)
 
     def send_messages(self):
         self.socket = None
@@ -39,6 +45,7 @@ class KafkaProducer:
                     else:
                         pass
             except socket.error:
+                # print(self.message_queue.qsize())
                 self.socket.close()
                 self.socket = None
             except Exception as e:
@@ -91,3 +98,4 @@ if __name__ == "__main__":
             break
         m = bytes(i, 'utf-8')
         kafka_producer.send(topic, m)
+        kafka_producer.wait()

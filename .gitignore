@@ -128,3 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 sockets/Untitled-1.md
+*.mp4
+*.ogv
+images/
