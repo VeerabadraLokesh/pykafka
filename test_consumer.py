@@ -31,7 +31,7 @@ if __name__ == "__main__":
             # message_times[message_index] = time.perf_counter()
             total_bytes += len(message)
             if message_index % 100 == 99:
-                logging.info(f"Received {(message_index+1)} in {time.perf_counter() - start_time} seconds")
+                logging.info(f"Received {(message_index+1)} in {time.perf_counter() - start_time:.3f} seconds")
             message_index += 1
             if message_index == S.TEST_MESSAGE_COUNT:
                 break
