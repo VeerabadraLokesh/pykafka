@@ -131,3 +131,5 @@ sockets/Untitled-1.md
 *.mp4
 *.ogv
 images/
+*.svg
+test_logs.txt

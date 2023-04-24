@@ -26,5 +26,6 @@ if __name__ == "__main__":
         if message != b' ':
             unpickeld_obj = pickle.loads(message)
             func = types.FunctionType(marshal.loads(unpickeld_obj['func']), globals(), unpickeld_obj['func_name'])
+            logging.info(f"Executing function {unpickeld_obj['func_name']}, with input {unpickeld_obj['inputs']}")
             func(*unpickeld_obj['inputs'])
 
