@@ -2,6 +2,7 @@
 import os
 import logging
 import time
+import argparse
 import pickle
 import marshal
 import types
@@ -22,6 +23,10 @@ def factorial(x):
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--number', type=int, default=16, help="Number for which factorial needs to be calculated")
+    args = parser.parse_args()
+
     logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
                         datefmt='%d-%m-%Y:%H:%M:%S',
                         level=logging.INFO)
@@ -31,7 +36,7 @@ if __name__ == "__main__":
     req_obj = {
         "func": marshal.dumps(factorial.__code__),
         "func_name": factorial.__name__,
-        "inputs": [10]
+        "inputs": [args.number]
     }
 
     pickled_obj = pickle.dumps(req_obj)
