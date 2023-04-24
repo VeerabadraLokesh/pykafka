@@ -31,7 +31,7 @@ if __name__ == "__main__":
     req_obj = {
         "func": marshal.dumps(factorial.__code__),
         "func_name": factorial.__name__,
-        "inputs": [64]
+        "inputs": [10]
     }
 
     pickled_obj = pickle.dumps(req_obj)
