@@ -1,3 +1,5 @@
 kazoo
 # progressbar
 # opencv-python
+numpy
+matplotlib
