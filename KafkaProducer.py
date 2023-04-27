@@ -16,19 +16,22 @@ class KafkaProducer:
         # self.topic = topic
         self.message_queue = Queue()
         self.new_message_event = threading.Event()
+        self.wait_event = threading.Event()
 
         threading.Thread(target=self.send_messages, daemon=True).start()
         pass
 
     ## Wait till all messages are sent
     def wait(self):
-        previous_count = self.message_queue.qsize()
+        # previous_count = self.message_queue.qsize()
         while self.message_queue.qsize():
             current_count = self.message_queue.qsize()
-            if current_count - previous_count > 1000:
-                logging.info(f"{self.message_queue.qsize()} messages remaining")
-                previous_count = current_count
-            sleep(0.1)
+            # if current_count - previous_count > 1000:
+            #     previous_count = current_count
+            logging.info(f"{self.message_queue.qsize()} messages remaining")
+            self.wait_event(1)
+            if self.wait_event.is_set():
+                self.wait_event.clear()
 
     def send_messages(self):
         self.socket = None
@@ -49,6 +52,7 @@ class KafkaProducer:
                         self.message_queue.get(0)
                     else:
                         pass
+                self.wait_event.set()
             except socket.error:
                 # print(self.message_queue.qsize())
                 self.socket.close()
