@@ -37,7 +37,7 @@ FLUSH_MESSAGE_TIMEOUT = 1
 ## Max bytes per message
 BYTES_PER_MESSAGE = 65476   ## 6 bytes for command and topic name; so 65470 max bytes per message
 
-BROKER_CONNECTIONS = 1000
+BROKER_CONNECTIONS = 10000
 
 BOOTSTRAP_SERVERS="localhost:9092"
 
