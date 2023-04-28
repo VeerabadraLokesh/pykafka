@@ -29,7 +29,7 @@ class KafkaProducer:
             # if current_count - previous_count > 1000:
             #     previous_count = current_count
             logging.info(f"{self.message_queue.qsize()} messages remaining")
-            self.wait_event(1)
+            self.wait_event.wait(timeout=1)
             if self.wait_event.is_set():
                 self.wait_event.clear()
 
