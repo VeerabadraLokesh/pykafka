@@ -133,3 +133,4 @@ sockets/Untitled-1.md
 images/
 *.svg
 test_logs.txt
+kafka_data/

@@ -1,7 +1,8 @@
 import os
 
 
-KAFKA_STORAGE_PATH = os.path.join(os.path.expanduser('~'), 'kafka_data')
+# KAFKA_STORAGE_PATH = os.path.join(os.path.expanduser('~'), 'kafka_data')
+KAFKA_STORAGE_PATH = os.path.join(os.getcwd(), 'kafka_data')
 
 ## Retention in seconds
 # TOPIC_RETENTION_SLA = 600           # 600 seconds
