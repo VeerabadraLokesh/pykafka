@@ -134,3 +134,4 @@ images/
 *.svg
 test_logs.txt
 kafka_data/
+*.zip
