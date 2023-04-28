@@ -15,7 +15,7 @@ MAX_SEGMENT_FILE_SIZE = 1024 * 1024 * 1024   ## 1 GiB per segment file
 
 TOPIC_NAME_LENGTH = 5
 
-ZOOKEEPER_SERVICE = "localhost:2181"
+ZOOKEEPER_SERVICE = "localhost:2181,kafka-zookeeper:2181"
 
 BROKER_SOCKET_HOST = "0.0.0.0"
 
